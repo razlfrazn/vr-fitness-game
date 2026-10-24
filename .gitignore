@@ -30,3 +30,13 @@ __pycache__/
 Thumbs.db
 .vscode/
 .idea/
+
+# Unity project: game/KickrCubeTest (explicit, also covered by the patterns above)
+game/KickrCubeTest/[Ll]ibrary/
+game/KickrCubeTest/[Tt]emp/
+game/KickrCubeTest/[Ll]ogs/
+game/KickrCubeTest/[Oo]bj/
+game/KickrCubeTest/[Uu]ser[Ss]ettings/
+game/KickrCubeTest/[Bb]uild/
+game/KickrCubeTest/[Bb]uilds/
+
