@@ -1,0 +1,32 @@
+# Unity
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+[Mm]emoryCaptures/
+*.csproj
+*.sln
+*.suo
+*.user
+*.pidb
+*.booproj
+*.apk
+*.aab
+*.unitypackage
+crashlytics-buildid.txt
+# Godot
+.godot/
+.import/
+export_presets.cfg
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
