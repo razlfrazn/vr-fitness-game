@@ -94,6 +94,10 @@ port: usually a second Unity editor or a built player that's still running. Clos
 **Port** on the **KickrReceiver** object (and send to that port with `--port`). The bridge itself
 only *sends* to 5005, so it never blocks the port.
 
+**Audio is turned off** (Project Settings → Audio → *Disable Unity Audio*). The game has no sound yet,
+and on ProjectX the only audio device is RDP's *Remote Audio*, which made Unity's audio system crash the
+editor when entering Play mode. Untick it when sound is added and a real audio device is present.
+
 ## Run the tests
 
 In Unity: **Window → General → Test Runner**, then run **EditMode** and **PlayMode**. From a terminal, with the editor closed:
