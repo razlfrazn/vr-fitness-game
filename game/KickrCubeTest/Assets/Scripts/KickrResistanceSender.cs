@@ -153,7 +153,7 @@ namespace Kickr
         {
             if (!showReadout) return;
             if (_style == null)
-                _style = new GUIStyle(GUI.skin.box) { fontSize = 20, alignment = TextAnchor.UpperLeft, richText = true };
+                _style = KickrHud.CreateBoxStyle();
             string section = track != null && mover != null ? track.SectionNameAtWorldZ(mover.transform.position.z) : "-";
             string err = string.IsNullOrEmpty(LastError) ? "" : $"\n<color=orange>{LastError}</color>";
             string red = ZoneLabel(true);
@@ -161,7 +161,7 @@ namespace Kickr
                 $"<b>Terrain</b>  {section}  grade {CurrentGradePercent:+0.0;-0.0;0}%\n" +
                 $"Resistance: target {TargetLevel}  sent {LastSentLevel}  ({CommandsSent} cmds{(sendToTrainer ? "" : ", sending OFF")}){red}\n" +
                 $"Bridge cmd port: UDP {port}" + err;
-            GUI.Box(new Rect(10, 270, 560, 100), text, _style);
+            GUI.Box(KickrHud.TerrainBox, text, _style);
         }
     }
 }

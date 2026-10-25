@@ -96,6 +96,7 @@ Last updated: 2026-10-25
 - **Boost and slowdown zones:** translucent boxes on the road. Green = boost, ×1.5 speed for 3 s. Red = slowdown, ×0.6 for 3 s. Multipliers and durations are set per zone in the Inspector. Entering a zone of the same kind again restarts its timer; a boost and a slowdown at the same time multiply. Zones trigger when the cube's distance crosses the zone start (no physics).
   - Boost at 70 m, 260 m, 470 m. Slowdown at 160 m, 350 m.
 - **Zones also change resistance:** red = terrain level +20 (harder), green = terrain level −20 (easier) while the cube is inside the 4 m zone, then back to the terrain level. Example on the +10 % climb: 60 → 40 in a green zone → 60. Values are in Section 2.
+- **Distance tracker:** the KICKR reports no distance, so distance comes from the cube's progress along the course: total = completed laps × 500 m + position on the current lap (horizontal course metres, `CourseDistance` + `KickrCubeMover.CourseDistanceMeters`). A "Distance" HUD box to the right of the KICKR box shows `Total: 1.23 km  (1234 m)` and `Lap 3: 234 / 500 m`. All HUD boxes share one style and layout (`KickrHud`: font size 20, unscaled screen pixels), shown 1:1 at Game view Scale 1x.
 - **Not done yet:** steering, gears and brake (Zwift controller input is not in Unity yet).
 
 ---
@@ -122,3 +123,4 @@ Last updated: 2026-10-25
 - 2026-10-25: V1 gray-box built: 500 m course (+6/+10 % climbs, −8/−5/−3 % descents), 3 boost (×1.5, 3 s) and 2 slowdown (×0.6, 3 s) zones; re-entering refreshes the timer.
 - 2026-10-25: Terrain drives the trainer via FTMS resistance level: 30 + 3 per % grade, clamped 0–100, sent on change ≥1 at ≤2 Hz from Unity to the bridge on UDP 5007.
 - 2026-10-25: Zones change resistance too: red slowdown zones send terrain level +20, green boost zones terrain level −20 (Inspector offsets, clamped 0–100), restored to the recomputed terrain level on exit. Zone enters wait for the next allowed send; restores bypass the 0.5 s limit. Speed multipliers unchanged (×1.5 / ×0.6).
+- 2026-10-25: Distance tracker added: course-derived (laps × 500 m + lap position), not from the KICKR; shown in a HUD box sharing the KICKR/Terrain box style (`KickrHud`).

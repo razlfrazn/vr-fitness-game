@@ -38,11 +38,21 @@ namespace Kickr
         public List<SpeedZone> zones = new List<SpeedZone>();
 
         public bool showReadout = true;
+        [Tooltip("Show the course distance box (total over all laps + position on this lap).")]
+        public bool showDistanceReadout = true;
 
         public float CurrentSpeedMps { get; private set; }
         public float DistanceTravelled { get; private set; }
         public float CurrentGradePercent { get; private set; }
         public int Laps { get; private set; }
+        /// <summary>Length of one lap of the course (metres), or 0 with no track.</summary>
+        public float LapLength => track != null ? track.profile.Length : 0f;
+        /// <summary>Position on the current lap from the course geometry (metres from the start line).</summary>
+        public float LapPositionMeters => track != null
+            ? CourseDistance.LapPosition(transform.position.z, track.StartWorldZ, LapLength)
+            : Mathf.Max(0f, transform.position.z - _startPosition.z);
+        /// <summary>Total course distance ridden: Laps x lap length + position on this lap (not from the KICKR).</summary>
+        public float CourseDistanceMeters => CourseDistance.Total(Laps, LapPositionMeters, LapLength);
         public SpeedEffects Effects { get; } = new SpeedEffects();
         /// <summary>Product of all active power-up / power-down multipliers (1 = none).</summary>
         public float EffectMultiplier => Effects.GetMultiplier(Time.time);
@@ -128,14 +138,18 @@ namespace Kickr
             transform.position = _startPosition;
             transform.rotation = Quaternion.identity;
             DistanceTravelled = 0f;
+            Laps = 0;
             Effects.Clear();
         }
 
         void OnGUI()
         {
-            if (!showReadout) return;
+            if (!showReadout && !showDistanceReadout) return;
             if (_style == null)
-                _style = new GUIStyle(GUI.skin.box) { fontSize = 20, alignment = TextAnchor.UpperLeft, richText = true };
+                _style = KickrHud.CreateBoxStyle();
+            if (showDistanceReadout)
+                GUI.Box(KickrHud.DistanceBox, "<b>Distance</b>  (course)\n" + CourseDistance.Label(Laps, LapPositionMeters, LapLength), _style);
+            if (!showReadout) return;
 
             string text;
             if (receiver == null)
@@ -156,7 +170,7 @@ namespace Kickr
                     $"Cube distance: {DistanceTravelled:0.0} m" + (track != null ? $"  (z {transform.position.z:0} / {track.EndWorldZ:0} m, lap {Laps + 1})" : "") + "\n" +
                     EffectsLabel() + err;
             }
-            GUI.Box(new Rect(10, 10, 460, 250), text, _style);
+            GUI.Box(KickrHud.KickrBox, text, _style);
         }
 
         string EffectsLabel()
