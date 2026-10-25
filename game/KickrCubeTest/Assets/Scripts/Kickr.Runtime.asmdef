@@ -1,7 +1,9 @@
 {
     "name": "Kickr.Runtime",
     "rootNamespace": "Kickr",
-    "references": [],
+    "references": [
+        "Unity.InputSystem"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

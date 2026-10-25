@@ -65,6 +65,10 @@ namespace Kickr
         [Tooltip("Zones to check. Empty = use the mover's zones.")]
         public List<SpeedZone> zones = new List<SpeedZone>();
 
+        [Header("Gem boost (A button)")]
+        [Tooltip("While its boost is active, its Boost Resistance Reduction is taken off the level. Optional.")]
+        public BoostController boost;
+
         public bool logCommands = true;
         public bool showReadout = true;
 
@@ -73,6 +77,7 @@ namespace Kickr
         public int TargetLevel => _controller != null ? _controller.TargetLevel : -1;
         public bool InSlowdownZone => _controller != null && _controller.InSlowdownZone;
         public bool InBoostZone => _controller != null && _controller.InBoostZone;
+        public int BoostReduction => _controller != null ? _controller.BoostReduction : 0;
         public int LastSentLevel { get; private set; } = -1;
         public int CommandsSent { get; private set; }
         public string LastError { get; private set; } = "";
@@ -112,7 +117,8 @@ namespace Kickr
             float z = mover.transform.position.z;
             CurrentGradePercent = track.GradePercentAtWorldZ(z);
             var list = zones.Count > 0 ? zones : mover.zones;
-            _controller.Tick(CurrentGradePercent, ZoneResistance.InsideAnySlowdown(list, z), ZoneResistance.InsideAnyBoost(list, z), Time.realtimeSinceStartupAsDouble);
+            _controller.Tick(CurrentGradePercent, ZoneResistance.InsideAnySlowdown(list, z), ZoneResistance.InsideAnyBoost(list, z),
+                boost != null && boost.isActiveAndEnabled ? boost.ResistanceReduction : 0, Time.realtimeSinceStartupAsDouble);
         }
 
         void OnDisable()
@@ -146,6 +152,7 @@ namespace Kickr
             string s = "";
             if (InSlowdownZone) s += rich ? $"  <color=red>RED +{zoneResistance.slowdownOffset}</color>" : $" red zone +{zoneResistance.slowdownOffset}";
             if (InBoostZone) s += rich ? $"  <color=lime>GREEN -{zoneResistance.boostOffset}</color>" : $" green zone -{zoneResistance.boostOffset}";
+            if (BoostReduction > 0) s += rich ? $"  <color=cyan>BOOST -{BoostReduction}</color>" : $" boost -{BoostReduction}";
             return s;
         }
 

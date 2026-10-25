@@ -3,7 +3,8 @@
 A gray-box Unity scene driven by the Wahoo KICKR Core 2: when the flywheel turns, an orange cube
 rides a 500 m straight course with hills and valleys. The slope under the cube sets the trainer's
 resistance (uphill harder, downhill easier), and green/red zones on the road give a short speed boost
-or slowdown.
+or slowdown. Floating gems along the road give you boosts, and you use them with the **A** button on
+the **Zwift Ride** handlebar controller.
 
 - Unity **6000.6.7f1**, Universal Render Pipeline (URP "Universal 3D" template)
 - Scene: `Assets/Scenes/KickrCubeTest.unity` (first scene in Build Settings)
@@ -20,6 +21,8 @@ or slowdown.
 | `Assets/Scripts/KickrResistanceSender.cs` | On the **TrainerResistance** object. Reads the grade under the cube, adds the zone offset (below) and sends `{"cmd":"resistance","level":N}` to the bridge on UDP **5007**. Untick **Send To Trainer** to only show the value. Sends the baseline again when you leave Play. |
 | `Assets/Scripts/ZoneResistance.cs` | Zone resistance: red zone = terrain level **+ Slowdown Offset**, green zone = terrain level **− Boost Offset**, and the controller that makes sure zone enter/leave changes are never dropped by the rate limiter. Plain C#; the UDP sender sits behind `IResistanceCommandSender` so tests use a mock. |
 | `Assets/Scripts/SpeedEffects.cs`, `SpeedZone.cs` | Boost (green, ×1.5) and slowdown (red, ×0.6) zones. Riding into one starts a timed effect (3 s); riding into the same kind again restarts the timer. |
+| `Assets/Scripts/BoostGems.cs`, `BoostController.cs` | Boost gems and boost count. The gem layout (10 per lap, clear of zones, at least 2 per climb), distance-crossing pickup, the boost inventory (start 2, +1 per gem, −1 per use) and the A-button edge. On the **BoostGems** object: settings, `boostButton` / `boostButtonSide` (A / right) and the Space test fallback. A boost is −15 resistance and ×1.3 speed for 10 s. |
+| `Assets/Scripts/ZwiftRideUdpReceiver.cs` | On the **ZwiftRideButtons** object. Listens on UDP **5006** (loopback) for the Ride button JSON from the forwarder, and tracks which buttons are held per controller unit. |
 | `Assets/Scripts/FollowCamera.cs`, `TrackMarkers.cs` | Chase camera, and marker posts along the course (every 10 m, taller every 50 m). |
 | `Assets/Editor/KickrSceneBuilder.cs` | Builds the whole scene from code (road, embankment, zones, markers). Menu **Kickr → Rebuild KickrCubeTest Scene**. |
 | `Assets/Tests/` | Automated EditMode + PlayMode tests (Unity Test Framework). |
@@ -54,6 +57,14 @@ the next allowed send (within 0.5 s); the restore on leaving is sent straight aw
 (separate uphill and downhill gains, both 3), rounded and clamped to 0–100. Commands are only sent when
 the level changes by at least 1, and at most twice a second.
 
+**Boost gems** (cyan cubes floating over the road): 10 per lap at 31, 64, 97.5, 154, 219, 254, 286.5,
+344, 407 and 464 m. Riding past one collects it and adds a boost. You start each session with **2**.
+Press **A on the right Zwift Ride controller** to use one: for **10 s** the trainer gets **15 easier**
+(added on top of terrain and zones, clamped 0–100) and the cube goes **×1.3** faster. The HUD box under
+Distance shows `Boosts: N` and the seconds left. While a boost is running, more presses do nothing; at
+0 boosts, A does nothing. All values are on the **BoostGems** object. **Space** does the same as A, for
+testing without the controller.
+
 ## 1. Open the project
 
 1. Open **Unity Hub** → **Projects** → **Add** → **Add project from disk**.
@@ -83,6 +94,18 @@ python tools\fake_kickr_udp.py --mode constant --speed 15 --duration 30
 
 Press **Ctrl+C** to stop it.
 
+**Zwift Ride buttons (for the A boost)** — in a second terminal, from the repo root:
+
+```powershell
+cd tools\zwift_ride
+py -m pip install bleak          # once
+python zwift_play_listen.py --left-only
+```
+
+Wait for the handshake, then press A: you should see `PRESS   A` in the window. The script sends each
+press and release to Unity on UDP **127.0.0.1:5006**. Ctrl+C stops it. Keep it out of automated tests:
+the tests use their own fake sender.
+
 ## 3. Press Play
 
 Press the ▶ **Play** button at the top of the editor. The top-left readout shows:
@@ -104,6 +127,13 @@ port: usually a second Unity editor or a built player that's still running. Clos
 **Port** on the **KickrReceiver** object (and send to that port with `--port`). The bridge itself
 only *sends* to 5005, so it never blocks the port.
 
+**Zwift Ride buttons stop responding / no `PRESS` lines?** The Ride needs its **daily unlock**: connect the
+bike to the **free Zwift app** about once every 24 hours (sign in, pair the controllers and ride or sit on
+the pairing screen for a moment), then close Zwift and restart `zwift_play_listen.py`. Without it, the
+controllers hide their Zwift service and the buttons do nothing in this game. Also check that Zwift is
+closed while you play (it holds the Bluetooth connection), and that the Console has no
+`[ZwiftRideUdpReceiver] Could not bind UDP port 5006` warning (another editor or player has the port).
+
 **Audio is turned off** (Project Settings → Audio → *Disable Unity Audio*). The game has no sound yet,
 and on ProjectX the only audio device is RDP's *Remote Audio*, which made Unity's audio system crash the
 editor when entering Play mode. Untick it when sound is added and a real audio device is present.
@@ -123,6 +153,10 @@ by a zone, and check that the port is freed again. EditMode tests cover terrain 
 resistance mapping, the rate limiter, the command JSON, boost/slowdown timing and the scene wiring.
 The zone-resistance tests (EditMode, plus one PlayMode test that drives the real component) use a mock
 bridge sender that records the levels, so **no command ever reaches the real trainer** during tests.
+The boost tests cover the gem layout, pickup (lap wrap and big steps), boost count, the A-button edge,
+the ±15 resistance and the 5006 button JSON. One PlayMode test sends fake Ride A presses over UDP to a test
+port (5094) and checks one boost, 30 → 15 → 30 through the mock bridge, and the gem pickups.
+The forwarder's own tests need no hardware: `cd tools\zwift_ride; python -m unittest -v`.
 
 ## Not done yet: VR / Quest 3
 

@@ -10,6 +10,10 @@ Planning. The game engine choice (Unity or the fully open-source Godot) is still
 ## Folders
 - `docs/` - project notes, research and the build to-do list
 - `game/` - the game project goes here once the engine is chosen
+- `tools/` - the fake KICKR data sender, and `zwift_ride/`, which forwards Zwift Ride button presses to the game on UDP 5006
 
 ## Related
 - `kickr-bridge` - reads the trainer and sends data to this game over UDP port 5005
+
+## Troubleshooting
+- **Zwift Ride handlebar buttons stop responding:** connect the bike to the free Zwift app about once every 24 hours (the Ride's daily unlock), then close Zwift and restart `tools/zwift_ride/zwift_play_listen.py`. See `docs/DESIGN.md` (Controls).

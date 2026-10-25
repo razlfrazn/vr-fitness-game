@@ -7263,6 +7263,7 @@ GameObject:
   m_Component:
   - component: {fileID: 506285790}
   - component: {fileID: 506285789}
+  - component: {fileID: 506285791}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -7350,6 +7351,35 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &506285791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 506285788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 474bcb49853aa07438625e644c072ee6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Unity.RenderPipelines.Universal.Runtime::UnityEngine.Rendering.Universal.UniversalAdditionalLightData
+  m_UsePipelineSettings: 1
+  m_AdditionalLightsShadowResolutionTier: 2
+  m_CustomShadowLayers: 0
+  m_LightCookieSize: {x: 1, y: 1}
+  m_LightCookieOffset: {x: 0, y: 0}
+  m_SoftShadowQuality: 0
+  m_RenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_ShadowRenderingLayersMask:
+    serializedVersion: 0
+    m_Bits: 1
+  m_Version: 4
+  m_LightLayerMask: 1
+  m_ShadowLayerMask: 1
+  m_RenderingLayers: 1
+  m_ShadowRenderingLayers: 1
 --- !u!1 &510684295
 GameObject:
   m_ObjectHideFlags: 0
@@ -11512,6 +11542,52 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 823904532}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &829805644
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 829805646}
+  - component: {fileID: 829805645}
+  m_Layer: 0
+  m_Name: ZwiftRideButtons
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &829805645
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 829805644}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a56d3aca8877e6d449300b69abc20e98, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Kickr.Runtime::Kickr.ZwiftRideUdpReceiver
+  port: 5006
+  logEvents: 0
+--- !u!4 &829805646
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 829805644}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &845115742
 GameObject:
   m_ObjectHideFlags: 0
@@ -12298,6 +12374,11 @@ MonoBehaviour:
   rateLimit:
     minChange: 1
     minIntervalSeconds: 0.5
+  zoneResistance:
+    slowdownOffset: 20
+    boostOffset: 20
+  zones: []
+  boost: {fileID: 1578938079}
   logCommands: 1
   showReadout: 1
 --- !u!4 &867482579
@@ -13582,6 +13663,7 @@ MonoBehaviour:
   - {fileID: 1289853877}
   - {fileID: 920806048}
   showReadout: 1
+  showDistanceReadout: 1
 --- !u!23 &951031136
 MeshRenderer:
   m_ObjectHideFlags: 0
@@ -22705,6 +22787,75 @@ MeshFilter:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1575736980}
   m_Mesh: {fileID: 10202, guid: 0000000000000000e000000000000000, type: 0}
+--- !u!1 &1578938078
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1578938080}
+  - component: {fileID: 1578938079}
+  m_Layer: 0
+  m_Name: BoostGems
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1578938079
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1578938078}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0074858f5976c34285be2a0a8d7c959, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Kickr.Runtime::Kickr.BoostController
+  mover: {fileID: 951031135}
+  track: {fileID: 420206830}
+  buttons: {fileID: 829805645}
+  settings:
+    startingBoosts: 2
+    gemValue: 1
+    boostDuration: 10
+    boostResistanceReduction: 15
+    speedMultiplier: 1.3
+    gemsPerLap: 10
+    zoneClearance: 4
+    climbWeight: 2
+  boostButton: A
+  boostButtonSide: right
+  keyboardFallback: 1
+  spawnGems: 1
+  gemMaterial: {fileID: 2100000, guid: f696373229996ec4e9ef8eefab8d5a29, type: 2}
+  gemColor: {r: 0.2, g: 0.85, b: 1, a: 1}
+  gemHeight: 0.9
+  gemSize: 0.45
+  spinDegreesPerSecond: 90
+  bobAmplitude: 0.12
+  bobHz: 0.5
+  flashSeconds: 0.3
+  showReadout: 1
+--- !u!4 &1578938080
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1578938078}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1596558275
 GameObject:
   m_ObjectHideFlags: 0
@@ -30446,3 +30597,5 @@ SceneRoots:
   - {fileID: 1979630593}
   - {fileID: 867482579}
   - {fileID: 189675240}
+  - {fileID: 829805646}
+  - {fileID: 1578938080}

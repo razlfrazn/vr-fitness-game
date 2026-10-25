@@ -16,6 +16,8 @@ namespace Kickr
         public static readonly Rect TerrainBox = new Rect(10, 270, 560, 100);
         /// <summary>To the right of the KICKR box, above the Terrain box's right end.</summary>
         public static readonly Rect DistanceBox = new Rect(480, 10, 300, 100);
+        /// <summary>Boost count box, under the distance box.</summary>
+        public static readonly Rect BoostBox = new Rect(480, 120, 300, 75);
 
         public static GUIStyle CreateBoxStyle() =>
             new GUIStyle(GUI.skin.box) { fontSize = FontSize, alignment = TextAnchor.UpperLeft, richText = true };

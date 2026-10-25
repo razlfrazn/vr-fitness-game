@@ -44,3 +44,5 @@ game/KickrCubeTest/Assets/_Recovery*
 game/KickrCubeTest/Assets/Temp*
 game/KickrCubeTest/Captures/
 game/KickrCubeTest/ProjectSettings/Packages/com.unity.pipeline/
+# Zwift Ride forwarder log
+tools/zwift_ride/events.log

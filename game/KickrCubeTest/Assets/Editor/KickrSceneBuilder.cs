@@ -192,6 +192,9 @@ public static class KickrSceneBuilder
         sender.host = "127.0.0.1";
         sender.port = 5007;
 
+        // Zwift Ride buttons (UDP 5006) + boost gems / boost count
+        AddBoostSystem(mover, kickrTrack, sender);
+
         // Camera
         var camGo = new GameObject("Main Camera");
         camGo.tag = "MainCamera";
@@ -218,6 +221,48 @@ public static class KickrSceneBuilder
         AssetDatabase.SaveAssets();
         Debug.Log($"[KickrSceneBuilder] Saved {ScenePath}: {length:0} m course, {profile.sections.Count} sections, " +
                   $"{zones.Count} zones, {markers.Count} markers; build scenes: {list.Count}");
+    }
+
+    /// <summary>
+    /// Adds (or reuses) the ZwiftRideButtons receiver (UDP 5006) and the BoostGems controller, and
+    /// wires the boost into the resistance sender. Gems themselves are spawned at runtime from the course.
+    /// </summary>
+    public static BoostController AddBoostSystem(KickrCubeMover mover, KickrTrack track, KickrResistanceSender sender)
+    {
+        var buttons = UnityEngine.Object.FindAnyObjectByType<ZwiftRideUdpReceiver>();
+        if (buttons == null) buttons = new GameObject("ZwiftRideButtons").AddComponent<ZwiftRideUdpReceiver>();
+        buttons.port = 5006;
+        var boost = UnityEngine.Object.FindAnyObjectByType<BoostController>();
+        if (boost == null) boost = new GameObject("BoostGems").AddComponent<BoostController>();
+        boost.mover = mover;
+        boost.track = track;
+        boost.buttons = buttons;
+        boost.boostButton = "A";
+        boost.boostButtonSide = "right";
+        var gemMat = GetOrCreateMaterial("BoostGem", boost.gemColor);
+        BoostController.ApplyGemLook(gemMat, boost.gemColor);
+        EditorUtility.SetDirty(gemMat);
+        boost.gemMaterial = gemMat;
+        if (sender != null) sender.boost = boost;
+        return boost;
+    }
+
+    /// <summary>Adds the boost system to the open KickrCubeTest scene without rebuilding it.</summary>
+    [MenuItem("Kickr/Add Boost System To Open Scene")]
+    public static void AddBoostSystemToOpenScene()
+    {
+        var mover = UnityEngine.Object.FindAnyObjectByType<KickrCubeMover>();
+        var track = UnityEngine.Object.FindAnyObjectByType<KickrTrack>();
+        var sender = UnityEngine.Object.FindAnyObjectByType<KickrResistanceSender>();
+        if (mover == null || track == null) throw new Exception("Open KickrCubeTest first (no mover/track found)");
+        var boost = AddBoostSystem(mover, track, sender);
+        if (sender != null) EditorUtility.SetDirty(sender);
+        EditorUtility.SetDirty(boost);
+        var scene = mover.gameObject.scene;
+        EditorSceneManager.MarkSceneDirty(scene);
+        if (!EditorSceneManager.SaveScene(scene)) throw new Exception("SaveScene failed");
+        AssetDatabase.SaveAssets();
+        Debug.Log("[KickrSceneBuilder] BOOST_SYSTEM_OK " + scene.path);
     }
 
     // One slab per section, tilted to the section's pitch, top surface exactly on the profile.
