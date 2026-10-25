@@ -17,7 +17,8 @@ or slowdown.
 | `Assets/Scripts/KickrCubeMover.cs` | Moves the cube along the course at the trainer speed (km/h ÷ 3.6 = m/s, × **Speed Multiplier** × any active boost/slowdown), keeps it on the road height, loops back to the start at the end, rolls it like a wheel, and draws the on-screen readout. |
 | `Assets/Scripts/TrackProfile.cs`, `KickrTrack.cs` | The course as a list of sections (length + grade %). Gives height, grade and pitch at any distance. Edit the sections on the **Track** object. |
 | `Assets/Scripts/TerrainResistanceMapper.cs` | Grade → trainer resistance level (see table below), plus the rate limiter. Plain C#, unit tested. |
-| `Assets/Scripts/KickrResistanceSender.cs` | On the **TrainerResistance** object. Reads the grade under the cube and sends `{"cmd":"resistance","level":N}` to the bridge on UDP **5007**. Untick **Send To Trainer** to only show the value. Sends the baseline again when you leave Play. |
+| `Assets/Scripts/KickrResistanceSender.cs` | On the **TrainerResistance** object. Reads the grade under the cube, adds the zone offset (below) and sends `{"cmd":"resistance","level":N}` to the bridge on UDP **5007**. Untick **Send To Trainer** to only show the value. Sends the baseline again when you leave Play. |
+| `Assets/Scripts/ZoneResistance.cs` | Zone resistance: red zone = terrain level **+ Slowdown Offset**, green zone = terrain level **− Boost Offset**, and the controller that makes sure zone enter/leave changes are never dropped by the rate limiter. Plain C#; the UDP sender sits behind `IResistanceCommandSender` so tests use a mock. |
 | `Assets/Scripts/SpeedEffects.cs`, `SpeedZone.cs` | Boost (green, ×1.5) and slowdown (red, ×0.6) zones. Riding into one starts a timed effect (3 s); riding into the same kind again restarts the timer. |
 | `Assets/Scripts/FollowCamera.cs`, `TrackMarkers.cs` | Chase camera, and marker posts along the course (every 10 m, taller every 50 m). |
 | `Assets/Editor/KickrSceneBuilder.cs` | Builds the whole scene from code (road, embankment, zones, markers). Menu **Kickr → Rebuild KickrCubeTest Scene**. |
@@ -39,6 +40,15 @@ or slowdown.
 | 440–500 m | Finish straight | 0 % | 30 |
 
 Zones (4 m long, centred at): **boost** 70 m, 260 m, 470 m; **slowdown** 160 m, 350 m.
+
+**Zone resistance** (Inspector on **TrainerResistance → Zone Resistance**): while the cube is inside a
+**red** zone the trainer gets terrain level **+ 20** (*Slowdown Offset*); inside a **green** zone it gets
+terrain level **− 20** (*Boost Offset*). Both offsets are 0–100 and the result is clamped to 0–100.
+On leaving, the terrain level for the current grade is sent again. Examples: red on the flat 30 → 50 → 30;
+green on the +10 % climb 60 → 40 → 60; green on the −8 % descent 6 → 0 → 6. Entering a zone is sent on
+the next allowed send (within 0.5 s); the restore on leaving is sent straight away, even inside the
+0.5 s gap. The speed effects (×1.5 / ×0.6 for 3 s) are unchanged. The zones are only 4 m long, so at
+36 km/h you are inside one for about 0.4 s.
 
 **Resistance mapping** (Inspector on **TrainerResistance → Mapping**): level = 30 + 3 × grade %
 (separate uphill and downhill gains, both 3), rounded and clamped to 0–100. Commands are only sent when
@@ -80,7 +90,7 @@ Press the ▶ **Play** button at the top of the editor. The top-left readout sho
 - **state** — `waiting for bridge…` (listening, no data yet), `LIVE`, or `STALE` (no data for 2 s)
 - speed (km/h), cadence (rpm), power (W), packet count and how long ago the last packet came in
 
-- the current section, grade, resistance level being sent, and any active BOOST / SLOW effect
+- the current section, grade, resistance level being sent (with a RED +20 / GREEN −20 tag while inside a zone), and any active BOOST / SLOW effect
 
 Spin the flywheel (or run the fake sender) and the cube rolls forward over the hills. With the bridge
 running, the trainer gets heavier on climbs and lighter on descents. With no bike on the
@@ -111,6 +121,8 @@ The PlayMode tests send real UDP packets to a test port (5098, so they never cla
 check the parsed values, check that the cube moved and spun, follows the terrain height and gets boosted
 by a zone, and check that the port is freed again. EditMode tests cover terrain sampling, the grade →
 resistance mapping, the rate limiter, the command JSON, boost/slowdown timing and the scene wiring.
+The zone-resistance tests (EditMode, plus one PlayMode test that drives the real component) use a mock
+bridge sender that records the levels, so **no command ever reaches the real trainer** during tests.
 
 ## Not done yet: VR / Quest 3
 

@@ -63,6 +63,17 @@ namespace Kickr
             return true;
         }
 
+        /// <summary>True if the minimum interval since the last send has passed (or nothing was sent yet).</summary>
+        public bool IntervalElapsed(double now) => !_hasSent || now - _lastTime >= minIntervalSeconds;
+
+        /// <summary>Record a send that bypassed <see cref="ShouldSend"/> (e.g. a forced zone restore).</summary>
+        public void Record(int level, double now)
+        {
+            _hasSent = true;
+            _lastLevel = level;
+            _lastTime = now;
+        }
+
         public void Reset() => _hasSent = false;
     }
 }

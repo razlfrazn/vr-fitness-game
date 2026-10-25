@@ -61,6 +61,8 @@ Last updated: 2026-10-25
 - **Command port (done):** the bridge listens on UDP `127.0.0.1:5007` for JSON `{"cmd":"resistance","level":N}`. It clamps N to 0–100, writes FTMS `04 N` to the control point and logs the reply (`80 04 01` = success). If commands pile up, only the newest is written. Typing watts into the bridge (ERG) still works. Target power and simulation commands are not on the port yet.
 - **Terrain → resistance mapping (V1, set in the Unity Inspector):** level = **30** (flat baseline) + **3 per % grade** uphill and **3 per % grade** downhill, rounded, clamped **0–100**. Sent only when the level changes by **≥1**, at most **2 per second** (0.5 s minimum gap). Leaving Play sends the baseline (30) again.
   - Examples on the V1 course: +6 % → 48, +10 % → 60, −3 % → 21, −5 % → 15, −8 % → 6.
+- **Zone resistance (set in the Unity Inspector, `ZoneResistance`):** inside a red slowdown zone, level = terrain level **+ 20**; inside a green boost zone, level = terrain level **− 20**. Offsets 0–100, result clamped 0–100. Overlapping zones of the same colour don't stack; red and green overlapping cancel out.
+  - Rate limiting still applies, but zone edges are never dropped: entering a zone is held and sent on the next allowed send (≤0.5 s); leaving sends the recomputed terrain level immediately, even inside the 0.5 s gap. If you leave before the zone level went out, nothing is sent (the trainer is already at the terrain level).
 - **Verified live (2026-10-25):** level 40 then 30 via UDP 5007; both replied `80 04 01`.
 
 ### FTMS control (confirmed on this trainer)
@@ -93,6 +95,7 @@ Last updated: 2026-10-25
 - **Terrain → resistance:** uses the resistance level (`0x04`) mode, not simulation, for V1. Mapping values are in Section 2.
 - **Boost and slowdown zones:** translucent boxes on the road. Green = boost, ×1.5 speed for 3 s. Red = slowdown, ×0.6 for 3 s. Multipliers and durations are set per zone in the Inspector. Entering a zone of the same kind again restarts its timer; a boost and a slowdown at the same time multiply. Zones trigger when the cube's distance crosses the zone start (no physics).
   - Boost at 70 m, 260 m, 470 m. Slowdown at 160 m, 350 m.
+- **Zones also change resistance:** red = terrain level +20 (harder), green = terrain level −20 (easier) while the cube is inside the 4 m zone, then back to the terrain level. Example on the +10 % climb: 60 → 40 in a green zone → 60. Values are in Section 2.
 - **Not done yet:** steering, gears and brake (Zwift controller input is not in Unity yet).
 
 ---
@@ -118,3 +121,4 @@ Last updated: 2026-10-25
 - 2026-10-25: V1 scope set: a straight path with hills and valleys, pitch mapped to resistance, boost and slowdown trigger zones, gray-box art.
 - 2026-10-25: V1 gray-box built: 500 m course (+6/+10 % climbs, −8/−5/−3 % descents), 3 boost (×1.5, 3 s) and 2 slowdown (×0.6, 3 s) zones; re-entering refreshes the timer.
 - 2026-10-25: Terrain drives the trainer via FTMS resistance level: 30 + 3 per % grade, clamped 0–100, sent on change ≥1 at ≤2 Hz from Unity to the bridge on UDP 5007.
+- 2026-10-25: Zones change resistance too: red slowdown zones send terrain level +20, green boost zones terrain level −20 (Inspector offsets, clamped 0–100), restored to the recomputed terrain level on exit. Zone enters wait for the next allowed send; restores bypass the 0.5 s limit. Speed multipliers unchanged (×1.5 / ×0.6).
