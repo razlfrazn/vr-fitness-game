@@ -87,6 +87,65 @@ class ListenerTests(unittest.TestCase):
         self.assertIn("A", pressed)
         self.assertEqual(z.physical_side("A"), "right")
 
+    # --- button map overlay: codes, simultaneous presses, unknown bits ---
+
+    def test_every_ride_button_has_a_code(self):
+        self.assertEqual(len(z.RIDE_BUTTONS), 16)
+        self.assertEqual(z.RIDE_KNOWN_MASK, 0xFFFF)
+        self.assertEqual(z.button_code("A"), "0x00010")
+        self.assertEqual(z.button_code("RIGHT_ON_OFF"), "0x08000")
+        self.assertEqual(z.button_code("LEFT_PADDLE"), "analog 0")
+        self.assertEqual(z.button_code("UNKNOWN_0x10000"), "0x10000")
+        self.assertEqual(z.button_code("ANALOG_7"), "analog 7")
+        self.assertEqual(z.button_event("press", "A", "LEFT")["code"], "0x00010")
+
+    def test_simultaneous_presses_in_one_bitmap(self):
+        bmap = 0xFFFFFFFF & ~0x10 & ~0x02 & ~0x1000   # A + DPAD_UP + RIGHT_SHIFT_UP
+        pressed, _, _ = z.decode_ride(b"\x08" + varint(bmap))
+        self.assertEqual(pressed, {"A", "DPAD_UP", "RIGHT_SHIFT_UP"})
+
+    def test_unknown_bit_is_forwarded_raw(self):
+        bmap = 0xFFFFFFFF & ~0x10000                  # a bit outside the 16 known buttons
+        pressed, _, _ = z.decode_ride(b"\x08" + varint(bmap))
+        self.assertEqual(pressed, {"UNKNOWN_0x10000"})
+        left = self._controller(0x08)
+        left.handle("async", bytearray(b"\x23\x08" + varint(bmap)))
+        left.handle("async", bytearray(ALL_UP))
+        events = [e for e, _ in self.udp.sent]
+        self.assertEqual([(e["kind"], e["btn"], e["code"], e["side"]) for e in events],
+                         [("press", "UNKNOWN_0x10000", "0x10000", ""), ("release", "UNKNOWN_0x10000", "0x10000", "")])
+        self.assertTrue(events[0]["raw"].startswith("23 08"))
+
+    def test_short_bitmap_has_no_phantom_unknowns(self):
+        pressed, _, _ = z.decode_ride(b"\x08" + varint(0xFFFF))   # only 16 bits sent, none cleared
+        self.assertEqual(pressed, set())
+
+    def test_unknown_analog_location_and_paddle(self):
+        # field 3 entries: {loc 0, value 50 (zigzag 100)} and {loc 7, value -30 (zigzag 59)}
+        body = b"\x08" + varint(0xFFFFFFFF) + b"\x1a\x04\x08\x00\x10" + varint(100) + b"\x1a\x04\x08\x07\x10" + varint(59)
+        pressed, analog, _ = z.decode_ride(body)
+        self.assertEqual(pressed, {"LEFT_PADDLE", "ANALOG_7"})
+        self.assertEqual(analog, {"LEFT_PADDLE": 50, "ANALOG_7": -30})
+
+    def test_unknown_opcode_forwarded_as_message_with_raw(self):
+        left = self._controller(0x08)
+        left.handle("async", bytearray(b"\x77\x01\x02"))
+        e = self.udp.sent[-1][0]
+        self.assertEqual((e["kind"], e["name"], e["op"], e["raw"]), ("message", "UNKNOWN", 0x77, "77 01 02"))
+
+
+
+def varint(v):
+    out = bytearray()
+    while True:
+        b = v & 0x7F
+        v >>= 7
+        if v:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -232,6 +232,7 @@ public static class KickrSceneBuilder
         var buttons = UnityEngine.Object.FindAnyObjectByType<ZwiftRideUdpReceiver>();
         if (buttons == null) buttons = new GameObject("ZwiftRideButtons").AddComponent<ZwiftRideUdpReceiver>();
         buttons.port = 5006;
+        AddButtonOverlay(buttons);
         var boost = UnityEngine.Object.FindAnyObjectByType<BoostController>();
         if (boost == null) boost = new GameObject("BoostGems").AddComponent<BoostController>();
         boost.mover = mover;
@@ -263,6 +264,30 @@ public static class KickrSceneBuilder
         if (!EditorSceneManager.SaveScene(scene)) throw new Exception("SaveScene failed");
         AssetDatabase.SaveAssets();
         Debug.Log("[KickrSceneBuilder] BOOST_SYSTEM_OK " + scene.path);
+    }
+
+    /// <summary>Adds (or reuses) the Zwift Ride button map HUD box on the receiver's GameObject.</summary>
+    public static ZwiftRideButtonOverlay AddButtonOverlay(ZwiftRideUdpReceiver buttons)
+    {
+        var overlay = UnityEngine.Object.FindAnyObjectByType<ZwiftRideButtonOverlay>();
+        if (overlay == null) overlay = buttons.gameObject.AddComponent<ZwiftRideButtonOverlay>();
+        overlay.buttons = buttons;
+        overlay.show = true;
+        EditorUtility.SetDirty(overlay);
+        return overlay;
+    }
+
+    /// <summary>Adds the button map overlay to the open KickrCubeTest scene without rebuilding it.</summary>
+    [MenuItem("Kickr/Add Ride Button Overlay To Open Scene")]
+    public static void AddButtonOverlayToOpenScene()
+    {
+        var buttons = UnityEngine.Object.FindAnyObjectByType<ZwiftRideUdpReceiver>();
+        if (buttons == null) throw new Exception("No ZwiftRideUdpReceiver in the open scene (run Kickr/Add Boost System To Open Scene first)");
+        AddButtonOverlay(buttons);
+        var scene = buttons.gameObject.scene;
+        EditorSceneManager.MarkSceneDirty(scene);
+        if (!EditorSceneManager.SaveScene(scene)) throw new Exception("SaveScene failed");
+        Debug.Log("[KickrSceneBuilder] BUTTON_OVERLAY_OK " + scene.path);
     }
 
     // One slab per section, tilted to the section's pitch, top surface exactly on the profile.

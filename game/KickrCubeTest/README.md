@@ -23,6 +23,7 @@ the **Zwift Ride** handlebar controller.
 | `Assets/Scripts/SpeedEffects.cs`, `SpeedZone.cs` | Boost (green, ×1.5) and slowdown (red, ×0.6) zones. Riding into one starts a timed effect (3 s); riding into the same kind again restarts the timer. |
 | `Assets/Scripts/BoostGems.cs`, `BoostController.cs` | Boost gems and boost count. The gem layout (10 per lap, clear of zones, at least 2 per climb), distance-crossing pickup, the boost inventory (start 2, +1 per gem, −1 per use) and the A-button edge. On the **BoostGems** object: settings, `boostButton` / `boostButtonSide` (A / right) and the Space test fallback. A boost is −15 resistance and ×1.3 speed for 10 s. |
 | `Assets/Scripts/ZwiftRideUdpReceiver.cs` | On the **ZwiftRideButtons** object. Listens on UDP **5006** (loopback) for the Ride button JSON from the forwarder, and tracks which buttons are held per controller unit. |
+| `Assets/Scripts/ZwiftRideButtonOverlay.cs` | Also on **ZwiftRideButtons**. The Ride button map (`ZwiftRideButtonMap`: 16 buttons + 2 paddles with their bit masks) and the HUD box right of the Distance/Boost boxes: Left / Right columns, each input lit while held, and unknown codes shown raw. Add it to an existing scene with **Kickr → Add Ride Button Overlay To Open Scene**. |
 | `Assets/Scripts/FollowCamera.cs`, `TrackMarkers.cs` | Chase camera, and marker posts along the course (every 10 m, taller every 50 m). |
 | `Assets/Editor/KickrSceneBuilder.cs` | Builds the whole scene from code (road, embankment, zones, markers). Menu **Kickr → Rebuild KickrCubeTest Scene**. |
 | `Assets/Tests/` | Automated EditMode + PlayMode tests (Unity Test Framework). |
@@ -114,6 +115,7 @@ Press the ▶ **Play** button at the top of the editor. The top-left readout sho
 - speed (km/h), cadence (rpm), power (W), packet count and how long ago the last packet came in
 
 - the current section, grade, resistance level being sent (with a RED +20 / GREEN −20 tag while inside a zone), and any active BOOST / SLOW effect
+- the **Zwift Ride buttons** box on the right (next to Distance / Boosts): every Ride input in Left / Right columns, lit green while you hold it, with an `Unknown:` line that shows any code the map doesn't know as raw hex. Without the forwarder running, nothing lights.
 
 Spin the flywheel (or run the fake sender) and the cube rolls forward over the hills. With the bridge
 running, the trainer gets heavier on climbs and lighter on descents. With no bike on the
@@ -156,6 +158,9 @@ bridge sender that records the levels, so **no command ever reaches the real tra
 The boost tests cover the gem layout, pickup (lap wrap and big steps), boost count, the A-button edge,
 the ±15 resistance and the 5006 button JSON. One PlayMode test sends fake Ride A presses over UDP to a test
 port (5094) and checks one boost, 30 → 15 → 30 through the mock bridge, and the gem pickups.
+The button map tests cover the 18-input mapping, press/release for every input, simultaneous presses, the
+two-unit relay, unknown codes shown raw, the JSON parsing and that no HUD boxes overlap. One PlayMode test
+sends fake presses to a test port (5093) and checks the overlay lights and clears.
 The forwarder's own tests need no hardware: `cd tools\zwift_ride; python -m unittest -v`.
 
 ## Not done yet: VR / Quest 3

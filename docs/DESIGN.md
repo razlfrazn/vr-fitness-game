@@ -22,7 +22,9 @@ Last updated: 2026-10-25
   `{"kind":"press","btn":"A","button":"A","side":"right","unit":"LEFT","pressed":true,"address":"CC:A3:D1:BA:46:D6","device":"Ride","raw":"23 08 ef ...","t":...}`
   - `side` is the **physical** handlebar side of the button (A/B/Y/Z and right shift/power-up = `right`; D-pad and left shift/power-up = `left`). `unit` is the controller unit that reported it.
   - Because the left unit relays the right unit, one A press can arrive twice (from `LEFT` and `RIGHT`, about 4 ms apart). Unity keeps a held state per unit and treats a button as held while **any** unit holds it, so a press is still one press.
-  - Run it with `python zwift_play_listen.py --left-only` (the left unit carries every input). It refuses port 5005 (bridge data) and `--no-udp` turns the forwarding off.
+  - Run it with `python zwift_play_listen.py --left-only`. The left unit relays every right-unit input (A, B, Y, Z, right shift, power-up, paddle) one way, so connecting only the left unit still delivers the right-side A. It also avoids the duplicate events and uses one Bluetooth connection instead of two. It refuses port 5005 (bridge data) and `--no-udp` turns the forwarding off.
+  - Each press/release also carries `code`: the bit mask (`"0x00010"`) or analog location (`"analog 0"`). A cleared field-1 bit outside the 16 known ones is forwarded as `UNKNOWN_0x10000` (code `0x10000`) and an unknown analog location as `ANALOG_n`, instead of being dropped. An unknown opcode is forwarded as `{"kind":"message","name":"UNKNOWN","op":...,"raw":...}`.
+- **Button map overlay:** the **ZwiftRideButtons** object also has `ZwiftRideButtonOverlay`, a HUD box to the right of the Distance and Boost boxes (`KickrHud.ButtonMapBox`, 302 x 356 px at x 790; same style and pixel scale, fits the 1102 x 505 editor Game view). It shows all 18 Ride inputs in Left and Right columns, and each one lights green while held on either unit. Inputs the map doesn't know are listed raw on the `Unknown:` line (held codes, plus the last unknown code or message with its bytes). The map is `ZwiftRideButtonMap`, which mirrors `RIDE_BUTTONS` / `ANALOG_LOC` in the forwarder.
 
 ### Input map (16 inputs, 15 confirmed so far, plus 2 untested on/off buttons)
 
@@ -110,7 +112,7 @@ Last updated: 2026-10-25
   - **Boost count:** each session starts with 2 boosts (`startingBoosts`); each gem adds `gemValue` (1). It carries across laps, with no meter. The HUD box under Distance shows `Boosts: N`, plus `BOOST x.x s` while a boost runs and `Gems this lap: a / 10`.
   - **Using a boost:** press **A on the right controller** when the count is at least 1 and no boost is running. It reacts to the edge, so holding A uses one boost. For **10 s** (`boostDuration`) the trainer gets **terrain level + zone offsets − 15** (`boostResistanceReduction`), clamped 0–100, and the cube gets **×1.3** speed (`speedMultiplier`). When it ends, the recomputed level is sent straight away; like a zone edge, it bypasses the 0.5 s gap. Examples: flat 30 → 15 → 30; +10 % climb 60 → 45; boost inside a red zone 30 + 20 − 15 = 35.
   - **Input path:** Ride → listener (BLE) → UDP JSON `127.0.0.1:5006` → `ZwiftRideUdpReceiver` (loopback only) → `BoostController`.
-- **Not done yet:** steering, gears and brake. Ride buttons now reach Unity, but only A is mapped so far.
+- **Not done yet:** steering, gears and brake. All Ride buttons reach Unity and show on the button map overlay, but only A drives gameplay so far.
 
 ---
 
@@ -139,4 +141,5 @@ Last updated: 2026-10-25
 - 2026-10-25: Distance tracker added: course-derived (laps × 500 m + lap position), not from the KICKR; shown in a HUD box sharing the KICKR/Terrain box style (`KickrHud`).
 - 2026-10-25: Target controller is the **Zwift Ride** (handlebar units), not Zwift Play (Play decoding kept as a bonus). **Known requirement:** the rider connects the bike to the free Zwift app about once every 24 h (daily unlock), or the handlebar buttons stop responding.
 - 2026-10-25: Boost gems added: 10 per lap (about every 50 m, at least 2 per climb, at least 4 m from zones), collected by distance crossing, respawning each lap. Boost count starts at 2, +1 per gem, −1 per use.
+- 2026-10-25: Zwift Ride button map overlay: every Ride input (16 buttons + 2 paddles) grouped Left/Right, lit while held, unknown codes shown raw; driven by the UDP 5006 events. The forwarder now forwards unknown bits and opcodes raw instead of dropping them.
 - 2026-10-25: Right **A** button = use a boost. Edge-triggered, only with at least 1 boost and none running. Effect: −15 resistance on top of terrain and zones (clamped 0–100) and ×1.3 speed for 10 s. Ride buttons reach Unity as UDP JSON on 127.0.0.1:5006 from the Python forwarder; Space is a hidden test fallback.

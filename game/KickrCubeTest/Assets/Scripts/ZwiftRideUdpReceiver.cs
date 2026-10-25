@@ -19,6 +19,10 @@ namespace Kickr
         public string side;      // physical side of the button: "right" / "left" (older listener: unit side)
         public string unit;      // which controller unit sent it: "RIGHT" / "LEFT"
         public bool pressed;
+        public string code;      // bit mask / analog location as text, e.g. "0x00010" (newer listener)
+        public string raw;       // raw notification bytes as hex, e.g. "23 08 ef ff ff ff 0f"
+        public int op;           // kind "message": opcode
+        public string name;      // kind "message": opcode name ("UNKNOWN" if the listener doesn't know it)
         public double t;
     }
 
@@ -29,6 +33,8 @@ namespace Kickr
         public string Side;      // lower case physical side: "right", "left" or ""
         public string Unit;      // upper case unit that reported it: "RIGHT", "LEFT" or ""
         public bool Pressed;
+        public string Code;      // e.g. "0x00010", or "" if the listener didn't send one
+        public string Raw;       // raw bytes as hex, or ""
     }
 
     /// <summary>Parses the listener's UDP JSON. Plain C#.</summary>
@@ -88,6 +94,8 @@ namespace Kickr
                 Side = side.ToLowerInvariant(),
                 Unit = unit.ToUpperInvariant(),
                 Pressed = pressed,
+                Code = packet.code ?? "",
+                Raw = packet.raw ?? "",
             };
             return true;
         }
@@ -103,6 +111,7 @@ namespace Kickr
     public class ZwiftButtonState
     {
         readonly HashSet<string> _held = new HashSet<string>();
+        readonly Dictionary<string, string> _codes = new Dictionary<string, string>();
 
         static string Key(string unit, string button, string side) => (unit ?? "") + "|" + (button ?? "").ToUpperInvariant() + "|" + (side ?? "").ToLowerInvariant();
 
@@ -110,6 +119,26 @@ namespace Kickr
         {
             string k = Key(e.Unit, e.Button, e.Side);
             if (e.Pressed) _held.Add(k); else _held.Remove(k);
+            if (!string.IsNullOrEmpty(e.Code)) _codes[(e.Button ?? "").ToUpperInvariant()] = e.Code;
+        }
+
+        /// <summary>Distinct names of every button held on any unit, sorted.</summary>
+        public List<string> HeldButtons()
+        {
+            var names = new SortedSet<string>(StringComparer.Ordinal);
+            foreach (var k in _held)
+            {
+                var parts = k.Split('|');
+                if (parts.Length >= 2 && parts[1].Length > 0) names.Add(parts[1]);
+            }
+            return new List<string>(names);
+        }
+
+        /// <summary>The code the listener sent for a button ("0x10000"), or "".</summary>
+        public string CodeOf(string button)
+        {
+            if (string.IsNullOrEmpty(button)) return "";
+            return _codes.TryGetValue(button.ToUpperInvariant(), out var c) ? c : "";
         }
 
         /// <summary>Held on any unit. side "" (or "any") matches either side.</summary>
@@ -160,6 +189,9 @@ namespace Kickr
         public int ButtonEvents { get; private set; }
         public string LastEvent { get; private set; } = "";
         public string LastError { get; private set; } = "";
+        /// <summary>Last input or message the button map doesn't know, shown raw (code + bytes), or "".</summary>
+        public string LastUnknown { get; private set; } = "";
+        public int UnknownEvents { get; private set; }
 
         void OnEnable() => StartListening();
         void OnDisable() => StopListening();
@@ -201,6 +233,12 @@ namespace Kickr
             Debug.Log($"[ZwiftRideUdpReceiver] Stopped listening on UDP port {port}");
         }
 
+        void NoteUnknown(string code, string raw)
+        {
+            UnknownEvents++;
+            LastUnknown = string.IsNullOrEmpty(raw) ? code : code + "  raw " + raw;
+        }
+
         void ReceiveLoop()
         {
             var any = new IPEndPoint(IPAddress.Any, 0);
@@ -234,10 +272,17 @@ namespace Kickr
                 ButtonEvents++;
                 LastEvent = $"{ev.Button} ({ev.Side}) {(ev.Pressed ? "down" : "up")} via {(string.IsNullOrEmpty(ev.Unit) ? "?" : ev.Unit)}";
                 if (logEvents) Debug.Log("[ZwiftRideUdpReceiver] " + LastEvent);
+                if (ev.Pressed && !ZwiftRideButtonMap.IsKnown(ev.Button))
+                    NoteUnknown((string.IsNullOrEmpty(ev.Code) ? ev.Button : ev.Code), ev.Raw);
                 return true;
             }
-            if (packet != null && packet.kind == "disconnected")
+            if (packet == null) return false;
+            if (packet.kind == "disconnected")
                 State.ClearUnit(string.IsNullOrEmpty(packet.unit) ? packet.side : packet.unit);
+            else if (packet.kind == "decode_error")
+                NoteUnknown("undecodable", packet.raw);
+            else if (packet.kind == "message" && (string.IsNullOrEmpty(packet.name) || packet.name == "UNKNOWN"))
+                NoteUnknown("op 0x" + packet.op.ToString("x2"), packet.raw);
             return false;
         }
     }

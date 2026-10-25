@@ -56,6 +56,28 @@ RIDE_BUTTONS = [
 # field 3 = repeated {1: location enum, 2: sint32 analog value (-100..100)}
 ANALOG_LOC = {0: "LEFT_PADDLE", 1: "RIGHT_PADDLE", 2: "ANALOG_UP", 3: "ANALOG_DOWN"}
 ANALOG_THRESHOLD = 25
+RIDE_KNOWN_MASK = 0
+for _m, _n in RIDE_BUTTONS:
+    RIDE_KNOWN_MASK |= _m
+RIDE_CODES = {n: f"0x{m:05x}" for m, n in RIDE_BUTTONS}
+RIDE_CODES.update({n: f"analog {loc}" for loc, n in ANALOG_LOC.items()})
+
+
+def unknown_button_name(mask):
+    """Name for a cleared field-1 bit that isn't one of the 16 known buttons, e.g. UNKNOWN_0x10000."""
+    return f"UNKNOWN_0x{mask:05x}"
+
+
+def button_code(button):
+    """Raw code of a button name: '0x00010' (field-1 mask), 'analog 0' (field-3 location), or ''."""
+    b = button or ""
+    if b in RIDE_CODES:
+        return RIDE_CODES[b]
+    if b.startswith("UNKNOWN_0x"):
+        return b[len("UNKNOWN_"):]
+    if b.startswith("ANALOG_") and b[7:].isdigit():
+        return f"analog {b[7:]}"
+    return ""
 
 OPCODES = {0x15: "IDLE", 0x19: "BATTERY_NOTIF", 0x1A: "BATTERY_STATUS", 0x23: "CONTROLLER_NOTIFICATION",
            0x07: "PLAY_KEYPAD_STATUS", 0x37: "CLICK_NOTIFICATION", 0x2A: "LOG_DATA", 0x3C: "GET_RESPONSE",
@@ -78,7 +100,7 @@ def physical_side(button):
 def button_event(kind, button, unit, address="", device="", **kw):
     """The UDP JSON dict for a press/release: btn + physical side + pressed, plus which unit sent it."""
     return dict(kind=kind, btn=button, button=button, side=physical_side(button), unit=unit,
-                pressed=(kind == "press"), address=address, device=device, **kw)
+                pressed=(kind == "press"), code=button_code(button), address=address, device=device, **kw)
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -159,6 +181,12 @@ def decode_ride(payload):
         for mask, name in RIDE_BUTTONS:
             if bmap & mask == 0:
                 pressed.add(name)
+        # Any other cleared bit below the highest set bit is a button this table doesn't know:
+        # forward it raw (UNKNOWN_0x...) instead of dropping it.
+        for bit in range(bmap.bit_length()):
+            mask = 1 << bit
+            if not (RIDE_KNOWN_MASK & mask) and not (bmap & mask):
+                pressed.add(unknown_button_name(mask))
     return pressed, analog, bmap
 
 
