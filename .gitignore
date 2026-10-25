@@ -39,4 +39,8 @@ game/KickrCubeTest/[Oo]bj/
 game/KickrCubeTest/[Uu]ser[Ss]ettings/
 game/KickrCubeTest/[Bb]uild/
 game/KickrCubeTest/[Bb]uilds/
-
+# Unity editor leftovers / local tooling (not project content)
+game/KickrCubeTest/Assets/_Recovery*
+game/KickrCubeTest/Assets/Temp*
+game/KickrCubeTest/Captures/
+game/KickrCubeTest/ProjectSettings/Packages/com.unity.pipeline/

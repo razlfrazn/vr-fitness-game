@@ -6,6 +6,7 @@ namespace Kickr
     /// <summary>
     /// Keeps an endless-looking track around the target: the ground follows the target in
     /// spacing-sized steps, and marker posts that fall behind are moved to the front.
+    /// With recycle off (finite course with fixed posts) it does nothing at runtime.
     /// </summary>
     public class TrackMarkers : MonoBehaviour
     {
@@ -14,10 +15,12 @@ namespace Kickr
         public List<Transform> markers = new List<Transform>();
         public float spacing = 5f;
         public float keepBehind = 15f;
+        [Tooltip("Endless mode: move the ground and recycle posts. Off for a finite, built course.")]
+        public bool recycle = true;
 
         void LateUpdate()
         {
-            if (target == null) return;
+            if (!recycle || target == null) return;
             float z = target.position.z;
 
             if (ground != null)

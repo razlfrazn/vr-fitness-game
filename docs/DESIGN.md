@@ -57,7 +57,11 @@ Last updated: 2026-10-25
 ### KICKR bridge (`razlfrazn/kickr-bridge`)
 - Python with bleak, running on ProjectX. It reads FTMS Indoor Bike Data (`0x2AD2`) and streams **speed (km/h), cadence (rpm) and power (W)** as UDP JSON to `127.0.0.1:5005` at about 1 Hz. It also logs a CSV.
 - On connect it sends FTMS Request Control (`0x00`); the trainer replies `80 00 01`, which means success.
-- **Limitation:** while the bridge is connected, Windows won't let a second process reach the FTMS service. All trainer control therefore has to go through the bridge. A to-do is to add resistance, power and simulation commands to it.
+- **Limitation:** while the bridge is connected, Windows won't let a second process reach the FTMS service. All trainer control therefore has to go through the bridge.
+- **Command port (done):** the bridge listens on UDP `127.0.0.1:5007` for JSON `{"cmd":"resistance","level":N}`. It clamps N to 0–100, writes FTMS `04 N` to the control point and logs the reply (`80 04 01` = success). If commands pile up, only the newest is written. Typing watts into the bridge (ERG) still works. Target power and simulation commands are not on the port yet.
+- **Terrain → resistance mapping (V1, set in the Unity Inspector):** level = **30** (flat baseline) + **3 per % grade** uphill and **3 per % grade** downhill, rounded, clamped **0–100**. Sent only when the level changes by **≥1**, at most **2 per second** (0.5 s minimum gap). Leaving Play sends the baseline (30) again.
+  - Examples on the V1 course: +6 % → 48, +10 % → 60, −3 % → 21, −5 % → 15, −8 % → 6.
+- **Verified live (2026-10-25):** level 40 then 30 via UDP 5007; both replied `80 04 01`.
 
 ### FTMS control (confirmed on this trainer)
 - **Feature flags:** machine `0x00004003`, target settings `0x0000600c`. Resistance target, power target and indoor bike simulation are all supported.
@@ -69,7 +73,7 @@ Last updated: 2026-10-25
 - The trainer doesn't report its current resistance level in Indoor Bike Data. Confirm changes through speed and power instead.
 
 ### Unity test project (`vr-fitness-game/game/KickrCubeTest`)
-- Unity 6000.6.7f1 (Unity 6.6), URP. `KickrUdpReceiver` listens on UDP 5005. `KickrCubeMover` moves a cube along +Z only, at km/h ÷ 3.6 × `speedMultiplier`. There is no reverse.
+- Unity 6000.6.7f1 (Unity 6.6), URP. `KickrUdpReceiver` listens on UDP 5005. `KickrCubeMover` moves the cube forward along the course at km/h ÷ 3.6 × `speedMultiplier` × the active boost/slowdown multiplier. There is no reverse. `KickrResistanceSender` sends resistance levels to UDP 5007.
 - **Verified live:** it rolled about 33 m on hand-turned flywheel data, with no console errors. 8 automated tests pass.
 
 ---
@@ -83,11 +87,19 @@ Last updated: 2026-10-25
 - **Art:** gray-box (placeholder geometry only).
 - **Controls:** D-pad steering, shift buttons for virtual gears, paddles as the combined brake.
 
+### Built so far (V1 gray-box, 2026-10-25)
+- **Course:** 500 m straight road along +Z, 10 sections, each flat or a constant grade, gray-box slabs on an embankment with a start and finish line and marker posts every 10 m. The cube follows the road height and loops back to the start at the end.
+  - 0–40 flat · 40–100 +6 % · 100–130 flat · 130–190 −8 % · 190–230 flat · 230–290 +10 % · 290–320 flat · 320–380 −5 % · 380–440 −3 % · 440–500 flat. Highest point 4.8 m, lowest −1.2 m.
+- **Terrain → resistance:** uses the resistance level (`0x04`) mode, not simulation, for V1. Mapping values are in Section 2.
+- **Boost and slowdown zones:** translucent boxes on the road. Green = boost, ×1.5 speed for 3 s. Red = slowdown, ×0.6 for 3 s. Multipliers and durations are set per zone in the Inspector. Entering a zone of the same kind again restarts its timer; a boost and a slowdown at the same time multiply. Zones trigger when the cube's distance crosses the zone start (no physics).
+  - Boost at 70 m, 260 m, 470 m. Slowdown at 160 m, 350 m.
+- **Not done yet:** steering, gears and brake (Zwift controller input is not in Unity yet).
+
 ---
 
 ## 4. Future work
 - **Real steering:** read handlebar rotation with an IMU or encoder (for example an ESP32 add-on) for twistable bars, replacing the D-pad stand-in.
-- Add resistance, target-power and simulation commands to the bridge, so control doesn't require stopping it.
+- Add target-power and simulation (grade) commands to the bridge's 5007 command port (resistance level is done). Consider switching terrain to FTMS simulation grade once a real bike is mounted.
 - Confirm the left power-up button, and test both on/off buttons.
 - Bring the Zwift controller input into Unity (UDP 5006) and wire it to the gears, brake and steering.
 - Mount a real bike and validate power and cadence.
@@ -104,3 +116,5 @@ Last updated: 2026-10-25
 - 2026-10-25: Zwift Ride controllers decoded. Left is primary and relays right, one-way.
 - 2026-10-25: Both paddles combine into one brake value. The D-pad is the V1 steering stand-in.
 - 2026-10-25: V1 scope set: a straight path with hills and valleys, pitch mapped to resistance, boost and slowdown trigger zones, gray-box art.
+- 2026-10-25: V1 gray-box built: 500 m course (+6/+10 % climbs, −8/−5/−3 % descents), 3 boost (×1.5, 3 s) and 2 slowdown (×0.6, 3 s) zones; re-entering refreshes the timer.
+- 2026-10-25: Terrain drives the trainer via FTMS resistance level: 30 + 3 per % grade, clamped 0–100, sent on change ≥1 at ≤2 Hz from Unity to the bridge on UDP 5007.

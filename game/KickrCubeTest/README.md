@@ -1,7 +1,9 @@
 # KickrCubeTest
 
-A tiny Unity scene that proves the KICKR → PC → Unity data path works: when the
-Wahoo KICKR Core 2 flywheel turns, an orange cube rolls forward along a track.
+A gray-box Unity scene driven by the Wahoo KICKR Core 2: when the flywheel turns, an orange cube
+rides a 500 m straight course with hills and valleys. The slope under the cube sets the trainer's
+resistance (uphill harder, downhill easier), and green/red zones on the road give a short speed boost
+or slowdown.
 
 - Unity **6000.6.7f1**, Universal Render Pipeline (URP "Universal 3D" template)
 - Scene: `Assets/Scenes/KickrCubeTest.unity` (first scene in Build Settings)
@@ -12,10 +14,35 @@ Wahoo KICKR Core 2 flywheel turns, an orange cube rolls forward along a track.
 | File | What it does |
 |---|---|
 | `Assets/Scripts/KickrUdpReceiver.cs` | Listens on UDP port **5005** (changeable in the Inspector) on a background thread, parses the bridge's JSON, and exposes speed, cadence, power, packet count and "seconds since last packet". Closes the socket when you leave Play mode. |
-| `Assets/Scripts/KickrCubeMover.cs` | Moves the cube forward at the trainer speed (km/h ÷ 3.6 = m/s, times **Speed Multiplier**), rolls it like a wheel, and draws the on-screen readout. |
-| `Assets/Scripts/FollowCamera.cs`, `TrackMarkers.cs` | Chase camera, and a ground plane + marker posts that keep up with the cube so you can see it move. |
-| `Assets/Editor/KickrSceneBuilder.cs` | Builds the scene from code. Menu **Kickr → Rebuild KickrCubeTest Scene**. |
+| `Assets/Scripts/KickrCubeMover.cs` | Moves the cube along the course at the trainer speed (km/h ÷ 3.6 = m/s, × **Speed Multiplier** × any active boost/slowdown), keeps it on the road height, loops back to the start at the end, rolls it like a wheel, and draws the on-screen readout. |
+| `Assets/Scripts/TrackProfile.cs`, `KickrTrack.cs` | The course as a list of sections (length + grade %). Gives height, grade and pitch at any distance. Edit the sections on the **Track** object. |
+| `Assets/Scripts/TerrainResistanceMapper.cs` | Grade → trainer resistance level (see table below), plus the rate limiter. Plain C#, unit tested. |
+| `Assets/Scripts/KickrResistanceSender.cs` | On the **TrainerResistance** object. Reads the grade under the cube and sends `{"cmd":"resistance","level":N}` to the bridge on UDP **5007**. Untick **Send To Trainer** to only show the value. Sends the baseline again when you leave Play. |
+| `Assets/Scripts/SpeedEffects.cs`, `SpeedZone.cs` | Boost (green, ×1.5) and slowdown (red, ×0.6) zones. Riding into one starts a timed effect (3 s); riding into the same kind again restarts the timer. |
+| `Assets/Scripts/FollowCamera.cs`, `TrackMarkers.cs` | Chase camera, and marker posts along the course (every 10 m, taller every 50 m). |
+| `Assets/Editor/KickrSceneBuilder.cs` | Builds the whole scene from code (road, embankment, zones, markers). Menu **Kickr → Rebuild KickrCubeTest Scene**. |
 | `Assets/Tests/` | Automated EditMode + PlayMode tests (Unity Test Framework). |
+
+## The V1 course (500 m)
+
+| Distance | Section | Grade | Resistance level |
+|---|---|---|---|
+| 0–40 m | Start flat | 0 % | 30 |
+| 40–100 m | Climb 1 | +6 % | 48 |
+| 100–130 m | Summit 1 | 0 % | 30 |
+| 130–190 m | Descent 1 | −8 % | 6 |
+| 190–230 m | Valley | 0 % | 30 |
+| 230–290 m | Climb 2 | +10 % | 60 |
+| 290–320 m | Summit 2 | 0 % | 30 |
+| 320–380 m | Descent 2 | −5 % | 15 |
+| 380–440 m | Run-out | −3 % | 21 |
+| 440–500 m | Finish straight | 0 % | 30 |
+
+Zones (4 m long, centred at): **boost** 70 m, 260 m, 470 m; **slowdown** 160 m, 350 m.
+
+**Resistance mapping** (Inspector on **TrainerResistance → Mapping**): level = 30 + 3 × grade %
+(separate uphill and downhill gains, both 3), rounded and clamped to 0–100. Commands are only sent when
+the level changes by at least 1, and at most twice a second.
 
 ## 1. Open the project
 
@@ -33,7 +60,7 @@ cd C:\Users\odder\Projects\kickr-bridge
 python kickr_bridge.py
 ```
 
-Wait for `Streaming.` Don't type numbers into the bridge window: a number + Enter sets the trainer's
+Wait for `Streaming.` and `Listening for commands on UDP 127.0.0.1:5007`. Don't type numbers into the bridge window: a number + Enter sets the trainer's
 target power (ERG mode). Just leave it running; `q` + Enter quits.
 
 **No trainer? Use the fake sender** (plain Python, no installs needed), from the repo root:
@@ -53,7 +80,10 @@ Press the ▶ **Play** button at the top of the editor. The top-left readout sho
 - **state** — `waiting for bridge…` (listening, no data yet), `LIVE`, or `STALE` (no data for 2 s)
 - speed (km/h), cadence (rpm), power (W), packet count and how long ago the last packet came in
 
-Spin the flywheel (or run the fake sender) and the cube rolls forward. With no bike on the
+- the current section, grade, resistance level being sent, and any active BOOST / SLOW effect
+
+Spin the flywheel (or run the fake sender) and the cube rolls forward over the hills. With the bridge
+running, the trainer gets heavier on climbs and lighter on descents. With no bike on the
 trainer, hand-spinning gives speed but power and cadence usually read 0, which is normal.
 
 Tip: select **KickrCube** in the Hierarchy and raise **Speed Multiplier** to exaggerate the motion.
@@ -74,7 +104,9 @@ unity test . --mode PlayMode --output playmode-results.xml
 ```
 
 The PlayMode tests send real UDP packets to a test port (5098, so they never clash with the bridge),
-check the parsed values, check that the cube moved and spun, and check that the port is freed again.
+check the parsed values, check that the cube moved and spun, follows the terrain height and gets boosted
+by a zone, and check that the port is freed again. EditMode tests cover terrain sampling, the grade →
+resistance mapping, the rate limiter, the command JSON, boost/slowdown timing and the scene wiring.
 
 ## Not done yet: VR / Quest 3
 
